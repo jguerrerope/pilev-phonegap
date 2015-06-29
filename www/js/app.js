@@ -6,8 +6,13 @@
   var insertString = function (str, index, value) {return str.substr(0, index) + value + str.substr(index);}
 
 
+  
+
 
   var module = angular.module('app', ['onsen','ngAnimate']);
+  //var module = ons.bootstrap('app',['onsen','ngAnimate']);
+  var onsenComponents;
+
   module.controller('AppController', function($scope, $timeout,$http) {
     $scope.isSplashSHow = true;
     $scope.lastUpdate = '';
@@ -21,115 +26,165 @@
     $scope.setLastUpdate = function(lastUpdate){
       $scope.lastUpdate = lastUpdate;
     }
+
+    $scope.setStatus = function(status){
+      $scope.status = status;
+    }
+
+
   });
   
   
+  /*
+    Modulo contralos de la vista details
+  */
 
-  module.controller('DetailController', function($scope,$dataRequeest) {
+
+  module.controller('DetailController', function($scope,$dataRequeest,$q) {
+
     $scope.item = $dataRequeest.selectedItem;
+    $scope.title = $dataRequeest.selectedItem.title;
+
   });
  
-
+  /*
+    Modulo contralos de la vista master
+  */
 
   module.controller('MasterController', function($scope, $dataRequeest,$timeout) {
     $dataRequeest.get()
     .then(function(data) {
-      $scope.items = data.items;
-      $scope.setLastUpdate( data.lastUpdate );
-      $dataRequeest.getConsumeTotal(data.items)
 
+      $scope.items = $dataRequeest.items = data.items;
+      $scope.setLastUpdate( data.lastUpdate );
+      
+      /*
+        Funcion que muestra los detalles de los hoteles
+      */
       $scope.showDetail = function(index) {
         var selectedItem = data.items[index];
-
         $dataRequeest.selectedItem = selectedItem;
         $scope.navi.pushPage('detail.html', {title : selectedItem.title});
       };
 
+      /*
+        Funcion que muestra los detalles t totlaes 
+      */
+      $scope.showDetailTotal = function() {
+        var selectedItemTotal = $dataRequeest.getConsumeTotal();
+        selectedItemTotal.title = "Datos totales de HOY del GRUPO LOPESAN"
 
+        $dataRequeest.selectedItem = selectedItemTotal;
+        $scope.navi.pushPage('detail.html', {title : selectedItemTotal.title});
+      };
+
+     
       $scope.hideSlapash();
         
     }, function(error) {
         $scope.error = error;
         $scope.mylist = [];
     });
+
+     
   });
 
 
+  /*
+    Modulo que genera los datos
+  */
+
   module.factory('$dataRequeest', function($http, $q) {
 
+    /*
+      Funcion para realizar la extracion de los datos
+    */
+    function scraping(data){
 
+      //obtenemos un array con las lineas del archivo
+      var lines = data.split("\n")
+      var items = [];
+
+      
+      //recorremos las lineas 
+      var itemsTpm = []
+      for(var i = 5; i< lines.length ; i+=5 ){
+        
+        //obtenemos los datos
+        var title = (lines[i]+'');
+        var id = md5(title.substring(title.indexOf('del')));
+        var energy = (lines[i+2]+'').substring('Energia: '.length  );
+        var co2 = (lines[i+3]+'').substring('Energia: '.length  );
+        var trees = (lines[i+4]+'').substring('Arboles: '.length  );
+
+        var item =  { 
+          'energy':energy,
+          'co2':co2,
+          'trees':trees
+        }
+
+        //si el item aun no esta en el array creamos uno vacio
+        if(!itemsTpm[id]){
+          itemsTpm[id] = { 
+            'title': title.toLowerCase(),
+            'today':null, 
+            'yesterday':null }
+        }
+
+        //si contiene HOY sera la data de hoy
+        if(title.indexOf('HOY') >= 0){
+          itemsTpm[id].today =  item ;
+        }else{
+          itemsTpm[id].yesterday =  item ;
+        } 
+      }
+
+      var lastUpdate = (lines[1]+'').substring('Ultima actualizacion: '.length  );
+      return {items: itemsTpm, lastUpdate: lastUpdate}
+    }
+
+    /*
+      Funcion que realiza el request
+    */
     function get() {
         var deferred = $q.defer();
         $http.get('http://pilve.iusiani.ulpgc.es/PILEV1.1-war/ficherosTXT/datosLopesan.txt')
         .success(function(data, status, headers, config) {
-          
-          //obtenemos un array con las lineas del archivo
-          var lines = data.split("\n")
+
           var items = [];
+          var scrapingItems = scraping(data);
 
-          //declaramos la estrutura de la data que sera devuelta
-          var result = {
-            'lastUpdate' : (lines[1]+'').substring('Ultima actualizacion: '.length  ),
-            'items' : []
-          };
-        
-
-          //recorremos las lineas 
-          var itemsTpm = []
-          for(var i = 5; i< lines.length ; i+=5 ){
-            
-            //obtenemos los datos
-            var title = (lines[i]+'').substring('PILEV 1.1 - '.length  );
-            
-            var id = md5(title.substring(title.indexOf('del')));
-            var energy = (lines[i+2]+'').substring('Energia: '.length  );
-            var co2 = (lines[i+3]+'').substring('Energia: '.length  );
-            var trees = (lines[i+4]+'').substring('Arboles: '.length  );
-
-            var item =  { 
-              'energy':energy,
-              'co2':co2,
-              'trees':trees
-            }
-
-            //si el item aun no esta en el array creamos uno vacio
-            if(!itemsTpm[id]){
-              itemsTpm[id] = { 
-                'title': title.toLowerCase(),
-                'today':null, 
-                'yesterday':null }
-            }
-
-            //si contiene HOY sera la data de hoy
-            if(title.indexOf('HOY') >= 0){
-              itemsTpm[id].today =  item ;
-            }else{
-              itemsTpm[id].yesterday =  item ;
-            } 
-          }
           //recorremos el array items para pasar la data final
-          for (var key in itemsTpm) {
-            var item = itemsTpm[key];
+          for (var key in scrapingItems.items) {
+            var item = scrapingItems.items[key];
             if(item.title !== "" ){
-
+              
+              item.id = new Date().getTime();
+              item.title = item.title.substring('PILEV 1.1 - '.length  );
               item.title = item.title.replace(' de hoy','');
-              result.items.push(item);
+
+              items.push(item);
             }
           }
           
-          deferred.resolve(result);
+          deferred.resolve({items:items,lastUpdate:scrapingItems.lastUpdate });
         })
         .error(deferred.resolve);
         return deferred.promise;
     }
+    
+
+    /*
+      Funcion que realiza el request
+    */
+    function getConsumeTotal() {
+      var items = this.items;
 
 
-    function getConsumeTotal(items) {
       var itemToday = { 'energy':0,'co2':0, 'trees':0 }
       var itemYesterday = { 'energy':0,'co2':0,'trees':0}
 
       for(var i = 0; i< items.length ; i++ ){
-        console.log()
         itemToday.energy += extractNumber(items[i].today.energy);
         itemToday.co2 += extractNumber(items[i].today.co2);
         itemToday.trees += extractNumber(items[i].today.trees);
@@ -139,7 +194,7 @@
         itemYesterday.trees += extractNumber(items[i].yesterday.trees);
       }
 
-      return {toaday: itemToday,yesterday: itemYesterday};
+      return {today: itemToday,yesterday: itemYesterday};
     }
     
 
