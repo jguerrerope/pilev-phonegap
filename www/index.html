@@ -34,8 +34,29 @@
   </ons-page>
 
 
+  <!-- error coccnection -->  
+  <ons-page class="error" ng-show="error">
+    <ons-toolbar fixed-style>
+      <div class="left">
+        <div class="center" class="title-app">Pilve Visor</div>
+      </div>
+      <div class="center">Pilve Visor</div>
+    </ons-toolbar>
+
+    <ons-row>
+        <ons-col>
+          <ons-icon icon="fa-exclamation-triangle" size="80px">
+          
+          <h1> Problemas de coneccion</h1>
+          <p>Lo sentimimos no hay conneccion a internet</p>
+        </ons-col>
+    </ons-row>
+  </ons-page>
+
+
+
   <!-- Master  - navigator-->  
-  <ons-navigator var="navi" ng-show="!isSplashSHow" >
+  <ons-navigator var="navi" ng-show="!isSplashSHow && !error" >
     <ons-page ng-controller="MasterController">
       
       <ons-toolbar fixed-style>
@@ -49,13 +70,14 @@
       </ons-toolbar>
 
    
-      <div class="last-update" ng-show="!error">Ultima actualizacion: {{lastUpdate}}</div>
+      <div class="last-update">Ultima actualizacion: {{lastUpdate}}</div>
       
-      <ons-list ng-show="!error">
-        <ons-list-item class="item" ng-repeat="item in items" ng-click="showDetail($index)">
+      <ons-list>
+        <ons-list-item class="item-master" ng-repeat="item in items" ng-click="showDetail($index)">
           <ons-row>
-            <ons-col width="40px"> 
-              <ons-icon icon="fa-building">
+            <ons-col width="80px"> 
+              <div class= "item-master-img-circle" style="background-image: url({{'img/' + item.img }})">
+              </div>
             </ons-col>
             <ons-col>
               <span class="item-master-title">{{item.title}}</span>
@@ -63,11 +85,6 @@
           </ons-row> 
         </ons-list-item>
       </ons-list>
-
-      <div class="error" ng-show="error">
-        Lo sentimimos no hay conneccion a internet
-      </div>
-
     </ons-page>
   </ons-navigator>
 
@@ -164,7 +181,6 @@
 
     </ons-page>
   </ons-template>
-
 
 
 
