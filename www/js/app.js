@@ -6,15 +6,13 @@
   var insertString = function (str, index, value) {return str.substr(0, index) + value + str.substr(index);}
 
 
-  
-
 
   var module = angular.module('app', ['onsen','ngAnimate']);
-  //var module = ons.bootstrap('app',['onsen','ngAnimate']);
   var onsenComponents;
 
   module.controller('AppController', function($scope, $timeout,$http) {
     $scope.isSplashSHow = true;
+    $scope.error = false;
     $scope.lastUpdate = '';
 
     $scope.hideSlapash = function(){
@@ -27,11 +25,14 @@
       $scope.lastUpdate = lastUpdate;
     }
 
-    $scope.setStatus = function(status){
-      $scope.status = status;
+    $scope.setError = function(error){
+      $scope.error = error;
+      console.log("setError  : " + $scope.error)
     }
+ 
 
 
+  
   });
   
   
@@ -40,29 +41,30 @@
   */
 
 
-  module.controller('DetailController', function($scope,$dataRequeest,$q) {
+  module.controller('DetailController', function($scope,$dataRequeest) {
 
     $scope.item = $dataRequeest.selectedItem;
     $scope.title = $dataRequeest.selectedItem.title;
-
   });
  
   /*
     Modulo contralos de la vista master
   */
 
-  module.controller('MasterController', function($scope, $dataRequeest,$timeout) {
+  module.controller('MasterController', function($scope, $dataRequeest) {
     $dataRequeest.get()
     .then(function(data) {
 
       $scope.items = $dataRequeest.items = data.items;
       $scope.setLastUpdate( data.lastUpdate );
-      
+
+
       /*
         Funcion que muestra los detalles de los hoteles
       */
       $scope.showDetail = function(index) {
         var selectedItem = data.items[index];
+
         $dataRequeest.selectedItem = selectedItem;
         $scope.navi.pushPage('detail.html', {title : selectedItem.title});
       };
@@ -78,12 +80,14 @@
         $scope.navi.pushPage('detail.html', {title : selectedItemTotal.title});
       };
 
-     
+      
       $scope.hideSlapash();
         
     }, function(error) {
-        $scope.error = error;
+      console.log("request error : " + $scope.error)
+        $scope.setError(true);
         $scope.mylist = [];
+        $scope.hideSlapash();
     });
 
      
@@ -97,51 +101,85 @@
   module.factory('$dataRequeest', function($http, $q) {
 
     /*
+      Funcion para obtener la imagne correspondiente al hotl
+    */
+    function getHotleImg(nameHotel){
+      var imgs = {
+        'hotel baobab': 'baobab.jpg',
+        'hotel faro': 'faro.jpg',
+        'hotel continental': 'continental.jpg',
+        'hotel interclub1':'interclub1.jpg',  
+        'hotel buenaventura':'buenaventura.jpg'
+      } 
+
+      return imgs[nameHotel];
+    }
+
+
+    /*
       Funcion para realizar la extracion de los datos
     */
     function scraping(data){
 
-      //obtenemos un array con las lineas del archivo
-      var lines = data.split("\n")
-      var items = [];
+      //obtenemos un array con las lineas del archivo en miniscula
+      var lines = data.toLowerCase().split("\n")
 
       
+      var itemsTpm = [];    //valores encontrados durante el scraping
+      var positionKeys = [];  //para contener la posicion en la que estan guardados los hoteles
+
       //recorremos las lineas 
-      var itemsTpm = []
       for(var i = 5; i< lines.length ; i+=5 ){
         
+        //nos aseguramos que la linea no esta vacia
+        if(lines[i] === ""){
+          continue;
+        }
+
         //obtenemos los datos
         var title = (lines[i]+'');
-        var id = md5(title.substring(title.indexOf('del')));
+        title = title.substring(title.indexOf('hotel'));
+
+        var title2 = (lines[i]+'').substring((lines[i]+'').indexOf('datos'),(lines[i]+'').indexOf('totales'));
+        title2 = title2 + "del " + title; 
+
         var energy = (lines[i+2]+'').substring('Energia: '.length  );
         var co2 = (lines[i+3]+'').substring('Energia: '.length  );
         var trees = (lines[i+4]+'').substring('Arboles: '.length  );
 
-        var item =  { 
+        var values =  { 
           'energy':energy,
           'co2':co2,
           'trees':trees
         }
 
-        //si el item aun no esta en el array creamos uno vacio
-        if(!itemsTpm[id]){
-          itemsTpm[id] = { 
-            'title': title.toLowerCase(),
-            'today':null, 
-            'yesterday':null }
+        //verificamos si el item ya fue agregado anteriormente
+        if(positionKeys.indexOf(title) < 0 ) {
+          var item = { 
+            'title': title,
+            'title2':title2,
+            'img':getHotleImg(title),
+            'today':values, 
+            'yesterday':null 
+          }
+
+          itemsTpm.push(item);
+          positionKeys.push(title);
+            
+        }else{
+          var index = positionKeys.indexOf(title);
+          itemsTpm[index].yesterday = values;
         }
 
-        //si contiene HOY sera la data de hoy
-        if(title.indexOf('HOY') >= 0){
-          itemsTpm[id].today =  item ;
-        }else{
-          itemsTpm[id].yesterday =  item ;
-        } 
       }
 
       var lastUpdate = (lines[1]+'').substring('Ultima actualizacion: '.length  );
       return {items: itemsTpm, lastUpdate: lastUpdate}
     }
+
+
+
+
 
     /*
       Funcion que realiza el request
@@ -153,23 +191,9 @@
 
           var items = [];
           var scrapingItems = scraping(data);
-
-          //recorremos el array items para pasar la data final
-          for (var key in scrapingItems.items) {
-            var item = scrapingItems.items[key];
-            if(item.title !== "" ){
-              
-              item.id = new Date().getTime();
-              item.title = item.title.substring('PILEV 1.1 - '.length  );
-              item.title = item.title.replace(' de hoy','');
-
-              items.push(item);
-            }
-          }
-          
-          deferred.resolve({items:items,lastUpdate:scrapingItems.lastUpdate });
+          deferred.resolve(scrapingItems);
         })
-        .error(deferred.resolve);
+        .error(deferred.reject);
         return deferred.promise;
     }
     
@@ -193,6 +217,15 @@
         itemYesterday.co2 += extractNumber(items[i].yesterday.co2);
         itemYesterday.trees += extractNumber(items[i].yesterday.trees);
       }
+
+
+      itemToday.energy = itemToday.energy + " kWh" 
+      itemToday.co2 = itemToday.co2 + " kilos"
+      itemToday.trees = itemToday.trees + " arboles"
+
+      itemYesterday.energy = itemYesterday.energy + " kWh"
+      itemYesterday.co2 = itemYesterday.co2 + " kilos"
+      itemYesterday.trees = itemYesterday.trees + " arboles"
 
       return {today: itemToday,yesterday: itemYesterday};
     }

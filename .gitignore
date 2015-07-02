@@ -3,3 +3,5 @@ hooks/
 platforms/
 plugins/
 merges/
+gulpfile.js
+makefile
