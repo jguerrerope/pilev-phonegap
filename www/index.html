@@ -76,7 +76,8 @@
         <ons-list-item class="item-master" ng-repeat="item in items" ng-click="showDetail($index)">
           <ons-row>
             <ons-col width="80px"> 
-              <div class= "item-master-img-circle" style="background-image: url({{'img/' + item.img }})">
+              <div class= "item-img-circle">
+                <img width="40px" height="40px" src="{{'img/' + item.img }}" alt="img" />
               </div>
             </ons-col>
             <ons-col>
@@ -99,15 +100,15 @@
         <div class="center"> Detalles </div>
       </ons-toolbar>
 
-      <div style="width: 90%;padding: 10px;margin:0 auto;" >
+      
         
-
-        <div class= "item-detail-img-circle" style="background-image: url({{'img/' + item.img }})">
-        </div>
-        <h1 class="item-detail-title">{{item.title2}}</h1>
+      <div class= "item-img-circle">
+        <img width="150px" height="150px" src="{{'img/' + item.img }}" alt="img" />
       </div>
-     
 
+      <h1 class="item-detail-title">{{item.title2}}</h1>
+    
+    
       <ons-carousel swipeable style="height: 60%; width: 100%;" initial-index="0" auto-scroll var="mCarousel">
         
         <ons-carousel-item class="today">
