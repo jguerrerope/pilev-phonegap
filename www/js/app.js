@@ -54,7 +54,6 @@
   module.controller('MasterController', function($scope, $dataRequeest) {
     $dataRequeest.get()
     .then(function(data) {
-
       $scope.items = $dataRequeest.items = data.items;
       $scope.setLastUpdate( data.lastUpdate );
 
@@ -74,7 +73,6 @@
       */
       $scope.showDetailTotal = function() {
         var selectedItemTotal = $dataRequeest.getConsumeTotal();
-        selectedItemTotal.title = "Datos totales de HOY del GRUPO LOPESAN"
 
         $dataRequeest.selectedItem = selectedItemTotal;
         $scope.navi.pushPage('detail.html', {title : selectedItemTotal.title});
@@ -84,7 +82,8 @@
       $scope.hideSlapash();
         
     }, function(error) {
-      console.log("request error : " + $scope.error)
+      
+        console.log("request error : " + $scope.error)
         $scope.setError(true);
         $scope.mylist = [];
         $scope.hideSlapash();
@@ -105,11 +104,12 @@
     */
     function getHotleImg(nameHotel){
       var imgs = {
-        'hotel baobab': 'baobab.jpg',
+        'hotel baobab': 'baobap.jpg',
         'hotel faro': 'faro.jpg',
         'hotel continental': 'continental.jpg',
-        'hotel interclub1':'interclub1.jpg',  
-        'hotel buenaventura':'buenaventura.jpg'
+        'hotel interclub1':'interclub.jpg',  
+        'hotel buenaventura':'buenaventura.jpg',
+        'total':'lopesan.png'
       } 
 
       return imgs[nameHotel];
@@ -227,7 +227,13 @@
       itemYesterday.co2 = itemYesterday.co2 + " kilos"
       itemYesterday.trees = itemYesterday.trees + " arboles"
 
-      return {today: itemToday,yesterday: itemYesterday};
+      return {
+        today: itemToday,
+        yesterday: itemYesterday, 
+        title: "Datos del Grupo LOPESAN",
+        title2: "Datos del Grupo LOPESAN",
+        img:getHotleImg('total'),
+      };
     }
     
 
